@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Estimation Game - Beta 2.0</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "sidebar gameboard info"
+                "cards cards cards";
+            grid-template-columns: 300px 1fr 300px;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            height: 100vh;
+        }
+
+        .header {
+            grid-area: header;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .gameboard {
+            grid-area: gameboard;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info {
+            grid-area: info;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .cards-hand {
+            grid-area: cards;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+        }
+
+        /* Spielbrett-Styling */
+        .board-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .board-grid {
+            position: relative;
+            width: 500px;
+            height: 500px;
+        }
+
+        .board-cell {
+            position: absolute;
+            width: 80px;
+            height: 100px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .board-cell.center {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #FFD700;
+        }
+
+        .board-cell.valid-drop {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            transform: scale(1.05);
+        }
+
+        .board-cell.invalid-drop {
+            background: rgba(244, 67, 54, 0.3);
+            border-color: #f44336;
+        }
+
+        /* Karten-Styling */
+        .card {
+            width: 70px;
+            height: 90px;
+            background: white;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            cursor: grab;
+            transition: all 0.3s ease;
+            color: #333;
+            font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .card.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+            transform: rotate(5deg);
+        }
+
+        .card.on-board {
+            position: absolute;
+            width: 76px;
+            height: 96px;
+            z-index: 10;
+        }
+
+        .card-name {
+            font-weight: bold;
+            font-size: 9px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .card-metrics {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+        }
+
+        .card-metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-metric-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .card-metric-value {
+            color: #333;
+        }
+
+        /* Status-Anzeigen */
+        .status {
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #4CAF50;
+        }
+
+        .status-offline {
+            background: #f44336;
+        }
+
+        .players-list {
+            margin-top: 20px;
+        }
+
+        .player {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player.current {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #FFD700;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .game-container {
+                grid-template-areas: 
+                    "header"
+                    "gameboard"
+                    "cards";
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .sidebar, .info {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🎴 Card Estimation Game - Beta 2.0</h1>
+            <div class="status">
+                <span class="status-indicator status-offline" id="connection-status"></span>
+                <span id="connection-text">Verbinde...</span>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h3>🎮 Spieler</h3>
+            <div class="players-list" id="players-list">
+                <div class="player current">
+                    <span>Du</span>
+                    <span>🎯</span>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">📊 Spielinfo</h3>
+            <div id="game-info">
+                <p>Session: <span id="session-id">-</span></p>
+                <p>Karten auf Board: <span id="cards-count">0</span></p>
+                <p>Mögliche Züge: <span id="possible-moves">0</span></p>
+            </div>
+        </div>
+
+        <div class="gameboard">
+            <div class="board-container">
+                <div class="board-grid" id="board-grid">
+                    <!-- Spielbrett-Zellen werden dynamisch generiert -->
+                </div>
+            </div>
+        </div>
+
+        <div class="info">
+            <h3>ℹ️ Spielregeln</h3>
+            <ul style="margin-top: 15px; font-size: 14px;">
+                <li>📏 Karten mit Breite → Horizontal</li>
+                <li>📐 Karten mit Höhe → Vertikal</li>
+                <li>🎯 Erste Karte benötigt beide Werte</li>
+                <li>📊 Größere Werte weiter außen</li>
+                <li>🔄 Karten können verschoben werden</li>
+            </ul>
+
+            <h3 style="margin-top: 30px;">🎲 Aktuelle Züge</h3>
+            <div id="valid-moves" style="margin-top: 15px; font-size: 12px;">
+                <p>Wähle eine Karte aus!</p>
+            </div>
+        </div>
+
+        <div class="cards-hand">
+            <h3 style="margin-right: 20px; align-self: center;">🎴 Deine Karten:</h3>
+            <div id="player-cards" style="display: flex; gap: 10px; overflow-x: auto; flex: 1;">
+                <!-- Karten werden dynamisch geladen -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let socket;
+        let gameState = {
+            sessionId: null,
+            board: {},
+            playerCards: [],
+            selectedCard: null,
+            validMoves: []
+        };
+
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeSocket();
+            await loadInitialData();
+            setupEventListeners();
+            renderBoard();
+        });
+
+        // Socket.IO Connection
+        async function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateConnectionStatus(true);
+                console.log('Connected to server');
+            });
+
+            socket.on('disconnect', () => {
+                updateConnectionStatus(false);
+                console.log('Disconnected from server');
+            });
+
+            socket.on('gameUpdate', (data) => {
+                updateGameState(data);
+            });
+
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                showNotification('Fehler: ' + error.message, 'error');
+            });
+        }
+
+        // Load initial game data
+        async function loadInitialData() {
+            try {
+                // Load available cards
+                const cardsResponse = await fetch('/api/game/cards');
+                const cardsData = await cardsResponse.json();
+                gameState.playerCards = cardsData.cards || [];
+
+                // Create or join session
+                const sessionResponse = await fetch('/api/game/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerName: 'Player1' })
+                });
+                const sessionData = await sessionResponse.json();
+                gameState.sessionId = sessionData.sessionId;
+
+                renderPlayerCards();
+                updateGameInfo();
+            } catch (error) {
+                console.error('Failed to load initial data:', error);
+                showNotification('Fehler beim Laden der Daten', 'error');
+            }
+        }
+
+        // Render the game board
+        function renderBoard() {
+            const boardGrid = document.getElementById('board-grid');
+            boardGrid.innerHTML = '';
+
+            // Create a 5x5 grid centered on the origin
+            for (let x = -2; x <= 2; x++) {
+                for (let y = -2; y <= 2; y++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    
+                    // Position the cell
+                    cell.style.left = (250 + x * 100 - 40) + 'px';
+                    cell.style.top = (250 - y * 120 - 50) + 'px';
+                    
+                    // Mark center cell
+                    if (x === 0 && y === 0) {
+                        cell.classList.add('center');
+                        cell.innerHTML = '<small>Start</small>';
+                    }
+                    
+                    // Add drop functionality
+                    cell.addEventListener('dragover', handleDragOver);
+                    cell.addEventListener('drop', handleDrop);
+                    
+                    boardGrid.appendChild(cell);
+                }
+            }
+
+            // Render cards on board
+            renderBoardCards();
+        }
+
+        // Render cards on the board
+        function renderBoardCards() {
+            const boardGrid = document.getElementById('board-grid');
+            
+            // Remove existing cards
+            boardGrid.querySelectorAll('.card').forEach(card => card.remove());
+            
+            // Add cards from game state
+            Object.entries(gameState.board).forEach(([position, cardData]) => {
+                const [x, y] = position.split(',').map(Number);
+                const cardElement = createCardElement(cardData, true);
+                cardElement.style.left = (250 + x * 100 - 38) + 'px';
+                cardElement.style.top = (250 - y * 120 - 48) + 'px';
+                boardGrid.appendChild(cardElement);
+            });
+        }
+
+        // Render player cards
+        function renderPlayerCards() {
+            const container = document.getElementById('player-cards');
+            container.innerHTML = '';
+
+            gameState.playerCards.forEach(card => {
+                const cardElement = createCardElement(card, false);
+                cardElement.draggable = true;
+                cardElement.addEventListener('dragstart', handleDragStart);
+                cardElement.addEventListener('click', () => selectCard(card));
+                container.appendChild(cardElement);
+            });
+        }
+
+        // Create card element
+        function createCardElement(card, onBoard = false) {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'card' + (onBoard ? ' on-board' : '');
+            cardElement.dataset.cardId = card.id;
+            
+            cardElement.innerHTML = `
+                <div class="card-name">${card.name}</div>
+                <div class="card-metrics">
+                    <div class="card-metric">
+                        <div class="card-metric-label">H</div>
+                        <div class="card-metric-value">${card.height || '-'}</div>
+                    </div>
+                    <div class="card-metric">
+                        <div class="card-metric-label">B</div>
+                        <div class="card-metric-value">${card.width || '-'}</div>
+                    </div>
+                </div>
+            `;
+            
+            return cardElement;
+        }
+
+        // Card selection
+        function selectCard(card) {
+            gameState.selectedCard = card;
+            
+            // Update visual selection
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            document.querySelector(`[data-card-id="${card.id}"]`).classList.add('selected');
+            
+            // Calculate valid moves
+            calculateValidMoves();
+        }
+
+        // Calculate valid moves for selected card
+        async function calculateValidMoves() {
+            if (!gameState.selectedCard) return;
+            
+            try {
+                const response = await fetch('/api/game/insertion-points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameState.sessionId,
+                        cardId: gameState.selectedCard.id
+                    })
+                });
+                
+                const data = await response.json();
+                gameState.validMoves = [...(data.horizontal || []), ...(data.vertical || []), ...(data.origin || [])];
+                
+                updateValidMovesDisplay();
+                highlightValidMoves();
+            } catch (error) {
+                console.error('Failed to calculate valid moves:', error);
+            }
+        }
+
+        // Highlight valid moves on board
+        function highlightValidMoves() {
+            document.querySelectorAll('.board-cell').forEach(cell => {
+                cell.classList.remove('valid-drop', 'invalid-drop');
+                
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                
+                const validMove = gameState.validMoves.find(move => move.x === x && move.y === y);
+                if (validMove) {
+                    cell.classList.add('valid-drop');
+                }
+            });
+        }
+
+        // Drag and Drop handlers
+        function handleDragStart(e) {
+            const cardId = e.target.dataset.cardId;
+            const card = gameState.playerCards.find(c => c.id === cardId);
+            gameState.selectedCard = card;
+            
+            e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', cardId);
+            
+            calculateValidMoves();
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            const cardId = e.dataTransfer.getData('text/plain');
+            const x = parseInt(e.target.dataset.x);
+            const y = parseInt(e.target.dataset.y);
+            
+            // Remove dragging class
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('dragging'));
+            
+            // Check if move is valid
+            const validMove = gameState.validMoves.find(move => move.x === x && move.y === y);
+            if (validMove) {
+                executeMove(cardId, validMove);
+            } else {
+                showNotification('Ungültiger Zug!', 'error');
+            }
+        }
+
+        // Execute a move
+        async function executeMove(cardId, move) {
+            try {
+                const response = await fetch('/api/game/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameState.sessionId,
+                        cardId: cardId,
+                        position: move
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Update game state
+                    gameState.board[`${move.x},${move.y}`] = gameState.selectedCard;
+                    gameState.playerCards = gameState.playerCards.filter(c => c.id !== cardId);
+                    gameState.selectedCard = null;
+                    gameState.validMoves = [];
+                    
+                    // Re-render
+                    renderBoard();
+                    renderPlayerCards();
+                    updateGameInfo();
+                    
+                    showNotification('Zug erfolgreich!', 'success');
+                } else {
+                    showNotification('Zug fehlgeschlagen: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to execute move:', error);
+                showNotification('Fehler beim Ausführen des Zugs', 'error');
+            }
+        }
+
+        // Update game info display
+        function updateGameInfo() {
+            document.getElementById('session-id').textContent = gameState.sessionId || '-';
+            document.getElementById('cards-count').textContent = Object.keys(gameState.board).length;
+            document.getElementById('possible-moves').textContent = gameState.validMoves.length;
+        }
+
+        // Update valid moves display
+        function updateValidMovesDisplay() {
+            const container = document.getElementById('valid-moves');
+            
+            if (gameState.validMoves.length === 0) {
+                container.innerHTML = '<p>Keine gültigen Züge</p>';
+            } else {
+                container.innerHTML = gameState.validMoves.map(move => 
+                    `<div style="margin: 5px 0; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                        ${move.type} (${move.x},${move.y})
+                        ${move.description ? '<br><small>' + move.description + '</small>' : ''}
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connection-status');
+            const text = document.getElementById('connection-text');
+            
+            if (connected) {
+                indicator.className = 'status-indicator status-online';
+                text.textContent = 'Verbunden';
+            } else {
+                indicator.className = 'status-indicator status-offline';
+                text.textContent = 'Getrennt';
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                background: ${type === 'error' ? '#f44336' : type === 'success' ? '#4CAF50' : '#2196F3'};
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Setup additional event listeners
+        function setupEventListeners() {
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    gameState.selectedCard = null;
+                    gameState.validMoves = [];
+                    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+                    document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('valid-drop', 'invalid-drop'));
+                    updateValidMovesDisplay();
+                }
+            });
+        }
+
+        // Update game state from server
+        function updateGameState(data) {
+            if (data.board) gameState.board = data.board;
+            if (data.players) updatePlayersList(data.players);
+            
+            renderBoard();
+            updateGameInfo();
+        }
+
+        // Update players list
+        function updatePlayersList(players) {
+            const container = document.getElementById('players-list');
+            container.innerHTML = '';
+            
+            players.forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.className = 'player';
+                playerElement.innerHTML = `
+                    <span>${player.name}</span>
+                    <span>${player.cardsCount} 🎴</span>
+                `;
+                container.appendChild(playerElement);
+            });
+        }
+    </script>
+</body>
+</html>

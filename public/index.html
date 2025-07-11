@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Estimation Game - Beta 2.0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .version {
+            font-size: 1.2em;
+            color: #FFD700;
+            margin-bottom: 30px;
+        }
+        
+        .features {
+            text-align: left;
+            margin: 30px 0;
+        }
+        
+        .features h3 {
+            color: #FFD700;
+            margin-bottom: 15px;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .features li:before {
+            content: "✨ ";
+            color: #FFD700;
+        }
+        
+        .api-link {
+            display: inline-block;
+            margin: 20px 10px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .api-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .status-online {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 Card Estimation Game</h1>
+        <div class="version">Beta 2.0 - Professional Edition</div>
+        
+        <div class="features">
+            <h3>🚀 Neue Features:</h3>
+            <ul>
+                <li>Smart Insertion System - Intelligente Kartenplatzierung</li>
+                <li>Fastify Backend - Moderne, performante Architektur</li>
+                <li>Professionelle Logging & Monitoring</li>
+                <li>Umfassende API-Endpoints</li>
+                <li>Containerisierung mit Docker</li>
+                <li>Automatisierte Tests</li>
+            </ul>
+        </div>
+        
+        <div class="status">
+            <h3>🟢 Server Status: <span class="status-online">ONLINE</span></h3>
+            <p>Der Server läuft und ist bereit für Verbindungen!</p>
+        </div>
+        
+        <div>
+            <a href="/api/health" class="api-link">📊 Health Check</a>
+            <a href="/api/game/cards" class="api-link">🎴 Karten anzeigen</a>
+            <a href="/api/game/sessions" class="api-link">🎮 Aktive Sessions</a>
+        </div>
+        
+        <div style="margin-top: 40px; font-size: 0.9em; opacity: 0.8;">
+            <p>Entwickelt mit ❤️ für die Beta 2.0</p>
+            <p>Bereit für die ersten Tests! 🎉</p>
+        </div>
+    </div>
+</body>
+</html>
