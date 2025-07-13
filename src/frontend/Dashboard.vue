@@ -253,7 +253,7 @@ export default {
           showNotification(`Spiel "${sessionName.value}" erstellt!`, 'success')
           
           // Open game room in new tab/window
-          const gameUrl = `http://localhost:5174/game.html?sessionId=${data.session.id}&playerId=${playerId.value}&playerName=${encodeURIComponent(playerName.value)}`
+          const gameUrl = `${window.location.origin}/game.html?sessionId=${data.session.id}&playerId=${playerId.value}&playerName=${encodeURIComponent(playerName.value)}`
           window.open(gameUrl, '_blank', 'width=1200,height=800')
           
           // Reset form
@@ -293,7 +293,7 @@ export default {
           showNotification(`Session beigetreten als ${playerName.value}!`, 'success')
           
           // Open game room in new tab/window
-          const gameUrl = `http://localhost:5174/game.html?sessionId=${sessionId}&playerId=${playerId.value}&playerName=${encodeURIComponent(playerName.value)}`
+          const gameUrl = `${window.location.origin}/game.html?sessionId=${sessionId}&playerId=${playerId.value}&playerName=${encodeURIComponent(playerName.value)}`
           window.open(gameUrl, '_blank', 'width=1200,height=800')
           
           // Refresh sessions list

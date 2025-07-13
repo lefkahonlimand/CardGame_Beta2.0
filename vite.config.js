@@ -5,7 +5,8 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    port: 3000,
+    port: 5173,
+    host: '0.0.0.0', // Allow external access
     open: '/index.html', // Open dashboard by default
     proxy: {
       '/api': {
@@ -17,7 +18,8 @@ export default defineConfig({
         changeOrigin: true,
         ws: true
       }
-    }
+    },
+    allowedHosts: ["8a93603d56e9.ngrok-free.app " , "192.168.178.33"]
   },
   root: './src/frontend',
   build: {

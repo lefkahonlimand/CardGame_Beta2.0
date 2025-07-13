@@ -323,7 +323,11 @@ export default {
     // Socket.IO connection and events
     const connectSocket = () => {
       try {
-        socket.value = io('http://localhost:3002', {
+        // Use current origin for socket connection (works for localhost AND ngrok)
+        const socketUrl = window.location.origin
+        console.log('Connecting to socket at:', socketUrl)
+        
+        socket.value = io(socketUrl, {
           transports: ['websocket', 'polling'],
           timeout: 5000
         })
@@ -606,7 +610,8 @@ export default {
     }
 
     const returnToDashboard = () => {
-      window.location.href = 'http://localhost:5173'
+      // Use current origin to work with both localhost and ngrok
+      window.location.href = window.location.origin
     }
 
     // Helper methods

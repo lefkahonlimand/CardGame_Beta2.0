@@ -16,8 +16,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export async function registerPlugins(app) {
   // Security plugins
   await app.register(fastifyHelmet, {
-    // Disable CSP for development
-    contentSecurityPolicy: config.nodeEnv === 'production'
+    // Disable CSP and nosniff for development
+    contentSecurityPolicy: config.nodeEnv === 'production',
+    noSniff: config.nodeEnv === 'production'
   });
 
   // CORS configuration
@@ -50,25 +51,24 @@ export async function registerPlugins(app) {
     pingInterval: 25000
   });
 
-  // Static file serving
-  await app.register(fastifyStatic, {
-    root: path.join(__dirname, '../../../public'),
-    prefix: '/public/',
-    decorateReply: false
+  // We'll handle frontend serving in routes, not here to avoid conflicts
+
+  // Static file serving for public assets
+  await app.register(async function (fastify) {
+    await fastify.register(fastifyStatic, {
+      root: path.join(__dirname, '../../../public'),
+      prefix: '/public/',
+      decorateReply: false
+    });
   });
 
   // Serve client files
-  await app.register(fastifyStatic, {
-    root: path.join(__dirname, '../../../src/client'),
-    prefix: '/client/',
-    decorateReply: false
-  });
-
-  // Serve assets
-  await app.register(fastifyStatic, {
-    root: path.join(__dirname, '../../../assets'),
-    prefix: '/assets/',
-    decorateReply: false
+  await app.register(async function (fastify) {
+    await fastify.register(fastifyStatic, {
+      root: path.join(__dirname, '../../../src/client'),
+      prefix: '/client/',
+      decorateReply: false
+    });
   });
 
   // Custom error handler

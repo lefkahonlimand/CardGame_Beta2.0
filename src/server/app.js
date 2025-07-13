@@ -47,8 +47,13 @@ async function buildApp(opts = {}) {
  */
 async function start() {
   try {
-    const app = await buildApp();
+    console.log('Starting server...');
+    logger.info('Building Fastify app...');
     
+    const app = await buildApp();
+    logger.info('Fastify app built successfully');
+    
+    logger.info(`Attempting to listen on ${config.host}:${config.port}`);
     await app.listen({
       port: config.port,
       host: config.host
@@ -73,6 +78,8 @@ async function start() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
+    console.error('DETAILED ERROR:', error);
+    console.error('ERROR STACK:', error.stack);
     logger.error('Failed to start server:', error);
     process.exit(1);
   }
